@@ -1,20 +1,22 @@
-import * as React from 'react';
+import * as React from 'react'
 
-import { StyleSheet, View, Text } from 'react-native';
-import DocumentPicker from 'react-native-document-picker';
+import { StyleSheet, View, Text, Button } from 'react-native'
+import DocumentPicker from 'react-native-document-picker'
 
 export default function App() {
-  const [result, setResult] = React.useState<number | undefined>();
-
-  React.useEffect(() => {
-    DocumentPicker.multiply(3, 7).then(setResult);
-  }, []);
+  const [result, setResult] = React.useState<number | undefined>()
 
   return (
     <View style={styles.container}>
+      <Button
+        title="open picker"
+        onPress={() => {
+          DocumentPicker.pick({}).then(setResult)
+        }}
+      />
       <Text>Result: {result}</Text>
     </View>
-  );
+  )
 }
 
 const styles = StyleSheet.create({
@@ -28,4 +30,4 @@ const styles = StyleSheet.create({
     height: 60,
     marginVertical: 20,
   },
-});
+})
