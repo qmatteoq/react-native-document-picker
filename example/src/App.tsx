@@ -1,20 +1,44 @@
 import * as React from 'react'
 
 import { StyleSheet, View, Text, Button } from 'react-native'
-import DocumentPicker from 'react-native-document-picker'
+import DocumentPicker, { DocumentPickerResponse, types } from 'react-native-document-picker'
 
 export default function App() {
-  const [result, setResult] = React.useState<number | undefined>()
+  const [result, setResult] = React.useState<Array<DocumentPickerResponse> | undefined>()
 
   return (
     <View style={styles.container}>
       <Button
-        title="open picker"
+        title="open picker for single file selection"
         onPress={() => {
-          DocumentPicker.pick({}).then(setResult)
+          DocumentPicker.pickSingle().then((result) => setResult([result]))
         }}
       />
-      <Text>Result: {result}</Text>
+      <Button
+        title="open picker for multi file selection"
+        onPress={() => {
+          DocumentPicker.pickMultiple().then(setResult)
+        }}
+      />
+      <Button
+        title="open picker for multi selection of word files"
+        onPress={() => {
+          DocumentPicker.pick({
+            allowMultiSelection: true,
+            type: [types.doc, types.docx],
+          }).then(setResult)
+        }}
+      />
+      <Button
+        title="open picker for single selection of pdf file"
+        onPress={() => {
+          DocumentPicker.pick({
+            type: types.pdf,
+          }).then(setResult)
+        }}
+      />
+
+      <Text>Result: {JSON.stringify(result)}</Text>
     </View>
   )
 }

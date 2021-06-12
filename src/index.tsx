@@ -1,10 +1,10 @@
 import { Platform, NativeModules } from 'react-native'
-import type { PlatformTypesType } from './types'
-import { platformTypes } from './types'
 import invariant from 'invariant'
+import type { PlatformTypes, SupportedPlatforms } from './fileTypes'
+import { perPlatformTypes } from './fileTypes'
 
 type DocumentPickerType = {
-  pick(options: Record<string, any>): Promise<any>
+  pick(options: Record<string, any>): Promise<DocumentPickerResponse[]>
   releaseSecureAccess(uris: string[]): Promise<void>
 }
 
@@ -20,48 +20,69 @@ if (!RNDocumentPicker) {
   }, 0)
 }
 
-const E_DOCUMENT_PICKER_CANCELED = 'DOCUMENT_PICKER_CANCELED'
-
-function isCancel(err: Error & { code: string }) {
-  return err && err.code === E_DOCUMENT_PICKER_CANCELED
-}
-
-type SupportedPlatforms = 'ios' | 'android' | 'windows'
-
-type DocumentPickerOptions<OS extends keyof PlatformTypesType> = {
-  type?: Array<PlatformTypesType[OS][keyof PlatformTypesType[OS]]> | PlatformTypesType[OS]
+type DocumentPickerOptions<OS extends SupportedPlatforms> = {
+  type?:
+    | string
+    | PlatformTypes[OS][keyof PlatformTypes[OS]]
+    | Array<PlatformTypes[OS][keyof PlatformTypes[OS]] | string>
   mode?: 'import' | 'open'
   copyTo?: 'cachesDirectory' | 'documentDirectory'
-  multiple?: boolean
+  allowMultiSelection?: boolean
 }
 
-function pickMultiple(opts) {
+export type DocumentPickerResponse = {
+  uri: string
+  fileCopyUri: string
+  copyError?: string
+  type: string
+  name: string
+  size: number
+}
+
+export const types = perPlatformTypes[Platform.OS]
+
+export function pickMultiple<OS extends SupportedPlatforms>(
+  opts?: DocumentPickerOptions<OS>,
+): Promise<DocumentPickerResponse[]> {
   const options = {
     ...opts,
-    multiple: true,
+    allowMultiSelection: true,
   }
-
   return pick(options)
 }
-
-function pick<OS extends keyof PlatformTypesType = SupportedPlatforms>(
-  opts: Readonly<DocumentPickerOptions<OS>>,
-) {
+export function pickSingle<OS extends SupportedPlatforms>(
+  opts?: DocumentPickerOptions<OS>,
+): Promise<DocumentPickerResponse> {
   const options = {
-    multiple: false,
+    ...opts,
+    allowMultiSelection: false,
+  }
+  return pick(options).then((results) => results[0])
+}
+
+export function pick<OS extends SupportedPlatforms>(
+  opts?: DocumentPickerOptions<OS>,
+): Promise<DocumentPickerResponse[]> {
+  const options = {
+    // must be false to maintain old (v5) behavior
+    allowMultiSelection: false,
+    type: [types.allFiles],
     ...opts,
   }
-  if (!('type' in options)) {
-    options.type = platformTypes.allFiles
+  if (!Array.isArray(options.type)) {
+    options.type = [options.type]
   }
-  options.type = Array.isArray(options.type) ? options.type : [options.type]
 
+  // @ts-ignore give me a break...
   return doPick(options)
 }
 
-function doPick<OS extends keyof PlatformTypesType = SupportedPlatforms>(
-  options: DocumentPickerOptions<OS> & { type: string[] },
-) {
+function doPick<OS extends SupportedPlatforms>(
+  options: DocumentPickerOptions<OS> & {
+    type: Array<PlatformTypes[OS][keyof PlatformTypes[OS]] | string>
+    allowMultiSelection: boolean
+  },
+): Promise<DocumentPickerResponse[]> {
   invariant(
     !('filetype' in options),
     'A `filetype` option was passed to DocumentPicker.pick, the correct option is `type`',
@@ -82,6 +103,7 @@ function doPick<OS extends keyof PlatformTypesType = SupportedPlatforms>(
 
   if (options.type.length > 1) {
     invariant(
+      // @ts-ignore TS2345: Argument of type 'string' is not assignable to parameter of type 'PlatformTypes[OS][keyof PlatformTypes[OS]]'.
       !options.type.includes('folder'),
       'When type array is folder then other options are not supported',
     )
@@ -101,7 +123,7 @@ function doPick<OS extends keyof PlatformTypesType = SupportedPlatforms>(
   return RNDocumentPicker.pick(options)
 }
 
-function releaseSecureAccess(uris: Array<string>): Promise<void> {
+export function releaseSecureAccess(uris: Array<string>): Promise<void> {
   if (Platform.OS !== 'ios') {
     return Promise.resolve()
   }
@@ -114,10 +136,18 @@ function releaseSecureAccess(uris: Array<string>): Promise<void> {
   return RNDocumentPicker.releaseSecureAccess(uris)
 }
 
+const E_DOCUMENT_PICKER_CANCELED = 'DOCUMENT_PICKER_CANCELED'
+
+export function isCancel(err: Error & { code: string }): boolean {
+  return err && err.code === E_DOCUMENT_PICKER_CANCELED
+}
+
 export default {
   isCancel,
   releaseSecureAccess,
   pick,
   pickMultiple,
-  types: platformTypes,
+  pickSingle,
+  types,
+  perPlatformTypes,
 }
