@@ -138,8 +138,8 @@ export function releaseSecureAccess(uris: Array<string>): Promise<void> {
 
 const E_DOCUMENT_PICKER_CANCELED = 'DOCUMENT_PICKER_CANCELED'
 
-export function isCancel(err: Error & { code: string }): boolean {
-  return err && err.code === E_DOCUMENT_PICKER_CANCELED
+export function isCancel(err: Error & { code?: string }): boolean {
+  return err?.code === E_DOCUMENT_PICKER_CANCELED
 }
 
 export default {

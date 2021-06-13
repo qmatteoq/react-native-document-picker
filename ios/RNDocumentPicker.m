@@ -11,7 +11,7 @@ static NSString *const E_DOCUMENT_PICKER_CANCELED = @"DOCUMENT_PICKER_CANCELED";
 static NSString *const E_INVALID_DATA_RETURNED = @"INVALID_DATA_RETURNED";
 
 static NSString *const OPTION_TYPE = @"type";
-static NSString *const OPTION_MULTIPLE = @"multiple";
+static NSString *const OPTION_MULTIPLE = @"allowMultiSelection";
 
 static NSString *const FIELD_URI = @"uri";
 static NSString *const FIELD_FILE_COPY_URI = @"fileCopyUri";
@@ -76,29 +76,29 @@ RCT_EXPORT_METHOD(pick:(NSDictionary *)options
     documentPicker.delegate = self;
     documentPicker.presentationController.delegate = self;
     documentPicker.modalPresentationStyle = UIModalPresentationFormSheet;
-    
+
     if (@available(iOS 11.0, *)) {
         documentPicker.allowsMultipleSelection = [RCTConvert BOOL:options[OPTION_MULTIPLE]];
     }
-    
+
     UIViewController *rootViewController = RCTPresentedViewController();
-    
+
     [rootViewController presentViewController:documentPicker animated:YES completion:nil];
 }
 
 - (NSMutableDictionary *)getMetadataForUrl:(NSURL *)url error:(NSError **)error
 {
     __block NSMutableDictionary *result = [NSMutableDictionary dictionary];
-    
+
     if (mode == UIDocumentPickerModeOpen)
         [urls addObject:url];
     [url startAccessingSecurityScopedResource];
-    
+
     NSFileCoordinator *coordinator = [NSFileCoordinator new];
     NSError *fileError;
-    
+
     [coordinator coordinateReadingItemAtURL:url options:NSFileCoordinatorReadingResolvesSymbolicLink error:&fileError byAccessor:^(NSURL *newURL) {
-        
+
         if (!fileError) {
             [result setValue:((mode == UIDocumentPickerModeOpen) ? url : newURL).absoluteString forKey:FIELD_URI];
             NSError *copyError;
@@ -109,7 +109,7 @@ RCT_EXPORT_METHOD(pick:(NSDictionary *)options
             }
 
             [result setValue:[newURL lastPathComponent] forKey:FIELD_NAME];
-            
+
             NSError *attributesError = nil;
             NSDictionary *fileAttributes = [[NSFileManager defaultManager] attributesOfItemAtPath:newURL.path error:&attributesError];
             if(!attributesError) {
@@ -117,7 +117,7 @@ RCT_EXPORT_METHOD(pick:(NSDictionary *)options
             } else {
                 NSLog(@"%@", attributesError);
             }
-            
+
             if ( newURL.pathExtension != nil ) {
                 CFStringRef extension = (__bridge CFStringRef)[newURL pathExtension];
                 CFStringRef uti = UTTypeCreatePreferredIdentifierForTag(kUTTagClassFilenameExtension, extension, NULL);
@@ -125,16 +125,16 @@ RCT_EXPORT_METHOD(pick:(NSDictionary *)options
                 if (uti) {
                     CFRelease(uti);
                 }
-                
+
                 NSString *mimeTypeString = (__bridge_transfer NSString *)mimeType;
                 [result setValue:mimeTypeString forKey:FIELD_TYPE];
             }
         }
     }];
-    
+
     if (mode != UIDocumentPickerModeOpen)
         [url stopAccessingSecurityScopedResource];
-    
+
     if (fileError) {
         *error = fileError;
         return nil;
@@ -176,7 +176,7 @@ RCT_EXPORT_METHOD(releaseSecureAccess:(NSArray<NSString *> *)uris)
     NSString *uniqueSubDirName = [[NSUUID UUID] UUIDString];
     NSURL *destinationDir = [destinationRootDir URLByAppendingPathComponent:[NSString stringWithFormat:@"%@/", uniqueSubDirName]];
     NSURL *destinationUrl = [destinationDir URLByAppendingPathComponent:[NSString stringWithFormat:@"%@", url.lastPathComponent]];
-    
+
     [NSFileManager.defaultManager createDirectoryAtURL:destinationDir withIntermediateDirectories:YES attributes:nil error:&error];
     if (error) {
         return url;
@@ -195,7 +195,7 @@ RCT_EXPORT_METHOD(releaseSecureAccess:(NSArray<NSString *> *)uris)
     RCTPromiseRejectBlock reject = [composeRejecters lastObject];
     [composeResolvers removeLastObject];
     [composeRejecters removeLastObject];
-    
+
     NSError *error;
     NSMutableDictionary *result = [self getMetadataForUrl:url error:&error];
     if (result) {
@@ -217,7 +217,7 @@ RCT_EXPORT_METHOD(releaseSecureAccess:(NSArray<NSString *> *)uris)
     RCTPromiseRejectBlock reject = [composeRejecters lastObject];
     [composeResolvers removeLastObject];
     [composeRejecters removeLastObject];
-    
+
     NSMutableArray *results = [NSMutableArray array];
     for (id url in urls) {
         NSError *error;
@@ -229,7 +229,7 @@ RCT_EXPORT_METHOD(releaseSecureAccess:(NSArray<NSString *> *)uris)
             return;
         }
     }
-    
+
     resolve(results);
 }
 
@@ -247,7 +247,7 @@ RCT_EXPORT_METHOD(releaseSecureAccess:(NSArray<NSString *> *)uris)
     RCTPromiseRejectBlock reject = [composeRejecters lastObject];
     [composeResolvers removeLastObject];
     [composeRejecters removeLastObject];
-    
+
     reject(E_DOCUMENT_PICKER_CANCELED, @"User canceled document picker", nil);
 }
 
